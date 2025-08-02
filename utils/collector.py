@@ -36,10 +36,16 @@ class FaceCollector:
         # Face detection setup
         self.face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
         self.cap = cv2.VideoCapture(0)
+        self.cap.set(cv2.CAP_PROP_FPS, 30)  # Set camera FPS
 
     def _detect_faces(self, frame):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
+        # Increase scaleFactor and minNeighbors for stricter detection
+        faces = self.face_cascade.detectMultiScale(
+            gray, 
+            scaleFactor=1.2,  # was 1.3
+            minNeighbors=7    # was 5
+        )
         return gray, faces
 
     def _save_face(self, face_img, count):
@@ -59,12 +65,16 @@ class FaceCollector:
 
             gray_frame, faces = self._detect_faces(frame)
             for (x, y, w, h) in faces:
-                face_img = gray_frame[y:y+h, x:x+w]  # Grayscale face crop
+                # Filter out small faces
+                if w < 80 or h < 80:
+                    continue
+                face_img = gray_frame[y:y+h, x:x+w]
                 self._save_face(face_img, count)
                 count += 1
                 if count >= self.num_images:
                     break
 
+            # Comment out preview for speed
             cv2.imshow("Face Capture (Grayscale Preview)", gray_frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 self.logger.info("Collection interrupted by user.")
